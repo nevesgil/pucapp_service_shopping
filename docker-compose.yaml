@@ -1,0 +1,44 @@
+version: '3.8'
+services:
+  pucapp:
+    build: .
+    image: pucapp
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    depends_on:
+      - postgres
+    environment:
+      - DATABASE_URL=postgresql://admin:admin@postgres:5432/pucappdb
+    networks:
+      - pucapp-network
+  postgres:
+    image: postgres
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=pucappdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./database/postgres_data:/var/lib/postgres
+    networks:
+      - pucapp-network
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@pgadmin.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports:
+      - "8081:80"
+    networks:
+      - pucapp-network
+    user: "5050:5050"
+
+networks:
+  pucapp-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
