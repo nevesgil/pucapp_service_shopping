@@ -4,8 +4,8 @@ from db import db
 from flask_cors import CORS
 from flask import Flask
 from flask_smorest import Api
-from resources.address import blp as AddressBlueprint
-from resources.user import blp as UserBlueprint
+from resources.cart import blp as AddressBlueprint
+from resources.order import blp as UserBlueprint
 
 
 def create_app(db_url=None):
@@ -13,7 +13,7 @@ def create_app(db_url=None):
     app = Flask(__name__)
 
     app.config["PROPAGATE_EXCEPTIONS"] = True
-    app.config["API_TITLE"] = "USERS REST API"
+    app.config["API_TITLE"] = "SHOPPING REST API"
     app.config["API_VERSION"] = "v1"
     app.config["OPENAPI_VERSION"] = "3.0.3"
     app.config["OPENAPI_URL_PREFIX"] = "/docs"
@@ -23,7 +23,7 @@ def create_app(db_url=None):
     )
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url or os.getenv(
         "DATABASE_URL",
-        "postgresql://admin:admin@postgres:5432/usersdb",
+        "postgresql://admin:admin@postgres:5432/shoppingdb",
     )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.init_app(app)
