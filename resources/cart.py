@@ -2,76 +2,96 @@ from flask.views import MethodView
 from flask_smorest import abort, Blueprint
 from db import db
 from models import CartModel, CartItemModel
-from sqlalchemy.exc import SQLAlchemyError
-from resources.schemas import CartSchema, CartItemSchema, CartItemUpdateSchema
+from resources.schemas import CartSchema, CartUpdateSchema, PlainCartSchema
 
 blp = Blueprint("Carts", __name__, description="Operations on carts")
 
-
-@blp.route("/cart/<int:user_id>")
+@blp.route("/cart/<int:cart_id>")
 class Cart(MethodView):
     @blp.response(200, CartSchema)
-    def get(self, user_id):
-        """Retrieve the cart for a specific user"""
-        cart = CartModel.query.filter_by(user_id=user_id, is_active=True).first()
+    def get(self, cart_id):
+        """Retrieve a cart by ID"""
+        return CartModel.query.get_or_404(cart_id)
+
+    @blp.arguments(CartUpdateSchema)
+    @blp.response(200, CartSchema)
+    def put(self, cart_data, cart_id):
+        """Update a cart"""
+        cart = CartModel.query.get(cart_id)
         if not cart:
             abort(404, message="Cart not found")
+
+        # Update the cart information as needed
+        for key, value in cart_data.items():
+            setattr(cart, key, value)
+
+        db.session.commit()
         return cart
 
-    def delete(self, user_id):
-        """Clear the user's cart"""
-        cart = CartModel.query.filter_by(user_id=user_id, is_active=True).first_or_404()
+    def delete(self, cart_id):
+        """Delete a cart"""
+        cart = CartModel.query.get(cart_id)
+        if not cart:
+            abort(404, message="Cart not found")
         db.session.delete(cart)
         db.session.commit()
-        return {"message": "Cart cleared"}, 200
+        return {"message": "Cart deleted successfully"}, 200
 
 
-@blp.route("/cart/<int:user_id>/items")
-class CartItems(MethodView):
-    @blp.response(200, CartItemSchema(many=True))
-    def get(self, user_id):
-        """Retrieve all items in the user's cart"""
-        cart = CartModel.query.filter_by(user_id=user_id, is_active=True).first_or_404()
-        return cart.items  # Assuming `items` is a relationship in CartModel
+@blp.route("/cart")
+class CartList(MethodView):
+    @blp.response(200, CartSchema(many=True))
+    def get(self):
+        """Retrieve all carts"""
+        return CartModel.query.all()
 
-    @blp.arguments(CartItemSchema)
-    @blp.response(201, CartItemSchema)
-    def post(self, item_data, user_id):
-        """Add an item to the user's cart"""
-        cart = CartModel.query.filter_by(user_id=user_id, is_active=True).first()
-        if not cart:
-            cart = CartModel(user_id=user_id, is_active=True)
-            db.session.add(cart)
-            db.session.commit()
-
-        item = CartItemModel(cart_id=cart.id, **item_data)
-
-        try:
-            db.session.add(item)
-            db.session.commit()
-        except SQLAlchemyError:
-            abort(500, message="Error adding item to cart")
-
-        return item, 201
+    @blp.arguments(PlainCartSchema)
+    @blp.response(201, CartSchema)
+    def post(self, cart_data):
+        """Create a new cart"""
+        cart = CartModel(**cart_data)
+        db.session.add(cart)
+        db.session.commit()
+        return cart, 201
 
 
-@blp.route("/cart/<int:user_id>/items/<int:item_id>")
+@blp.route("/cart/<int:cart_id>/item")
 class CartItem(MethodView):
-    def delete(self, user_id, item_id):
-        """Remove an item from the user's cart"""
-        item = CartItemModel.query.get_or_404(item_id)
-        db.session.delete(item)
-        db.session.commit()
-        return {"message": "Item removed from cart"}, 200
+    @blp.arguments(CartUpdateSchema)
+    @blp.response(201, CartSchema)
+    def post(self, cart_data, cart_id):
+        """Add an item to a cart"""
+        cart = CartModel.query.get(cart_id)
+        if not cart:
+            abort(404, message="Cart not found")
 
-    @blp.arguments(CartItemUpdateSchema)
-    @blp.response(200, CartItemSchema)
-    def put(self, item_data, user_id, item_id):
-        """Update an item in the user's cart (e.g., change quantity)"""
-        item = CartItemModel.query.get_or_404(item_id)
-        
-        for key, value in item_data.items():
-            setattr(item, key, value)
+        cart_item = CartItemModel(cart_id=cart_id, **cart_data)
+        db.session.add(cart_item)
+        db.session.commit()
+        return cart_item, 201
+
+
+@blp.route("/cart/<int:cart_id>/item/<int:item_id>")
+class CartItemDetail(MethodView):
+    @blp.arguments(CartUpdateSchema)
+    @blp.response(200, CartSchema)
+    def put(self, cart_data, cart_id, item_id):
+        """Update the item in the cart"""
+        cart_item = CartItemModel.query.get(item_id)
+        if not cart_item or cart_item.cart_id != cart_id:
+            abort(404, message="Item not found in this cart")
+
+        for key, value in cart_data.items():
+            setattr(cart_item, key, value)
 
         db.session.commit()
-        return item
+        return cart_item
+
+    def delete(self, cart_id, item_id):
+        """Delete an item from the cart"""
+        cart_item = CartItemModel.query.get(item_id)
+        if not cart_item or cart_item.cart_id != cart_id:
+            abort(404, message="Item not found in this cart")
+        db.session.delete(cart_item)
+        db.session.commit()
+        return {"message": "Item deleted successfully"}, 200

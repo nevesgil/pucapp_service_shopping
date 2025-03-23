@@ -1,9 +1,8 @@
 from flask.views import MethodView
 from flask_smorest import abort, Blueprint
 from db import db
-from models import OrderModel
-from sqlalchemy.exc import SQLAlchemyError
-from resources.schemas import OrderSchema, OrderUpdateSchema
+from models import OrderModel, OrderItemModel, CartModel
+from resources.schemas import OrderSchema, OrderUpdateSchema, PlainOrderSchema
 
 blp = Blueprint("Orders", __name__, description="Operations on orders")
 
@@ -15,24 +14,28 @@ class Order(MethodView):
         """Retrieve an order by ID"""
         return OrderModel.query.get_or_404(order_id)
 
-    def delete(self, order_id):
-        """Delete an order by ID"""
-        order = OrderModel.query.get_or_404(order_id)
-        db.session.delete(order)
-        db.session.commit()
-        return {"message": "Order deleted successfully"}, 200
-
     @blp.arguments(OrderUpdateSchema)
     @blp.response(200, OrderSchema)
     def put(self, order_data, order_id):
-        """Update an order status"""
-        order = OrderModel.query.get_or_404(order_id)
+        """Update an existing order"""
+        order = OrderModel.query.get(order_id)
+        if not order:
+            abort(404, message="Order not found")
 
         if "status" in order_data:
             order.status = order_data["status"]
 
         db.session.commit()
         return order
+
+    def delete(self, order_id):
+        """Delete an order"""
+        order = OrderModel.query.get(order_id)
+        if not order:
+            abort(404, message="Order not found")
+        db.session.delete(order)
+        db.session.commit()
+        return {"message": "Order deleted successfully"}, 200
 
 
 @blp.route("/order")
@@ -42,16 +45,30 @@ class OrderList(MethodView):
         """Retrieve all orders"""
         return OrderModel.query.all()
 
-    @blp.arguments(OrderSchema)
+    @blp.arguments(PlainOrderSchema)
     @blp.response(201, OrderSchema)
     def post(self, order_data):
-        """Create a new order from cart items"""
+        """Create a new order"""
+        # Ensure the cart exists before creating an order
+        cart = CartModel.query.get(order_data["cart_id"])
+        if not cart:
+            abort(404, message="Cart not found")
+        
+        # Create the order linked to the existing cart
         order = OrderModel(**order_data)
+        db.session.add(order)
+        db.session.commit()
 
-        try:
-            db.session.add(order)
-            db.session.commit()
-        except SQLAlchemyError:
-            abort(500, message="Error inserting the order")
+        # Optionally, create order items (if required, based on the cart items)
+        for item in cart.items:
+            order_item = OrderItemModel(
+                order_id=order.id,
+                product_id=item.product_id,
+                product_name=item.product_name,
+                product_price=item.product_price,
+                quantity=item.quantity,
+            )
+            db.session.add(order_item)
 
+        db.session.commit()
         return order, 201

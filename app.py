@@ -4,8 +4,8 @@ from db import db
 from flask_cors import CORS
 from flask import Flask
 from flask_smorest import Api
-from resources.cart import blp as AddressBlueprint
-from resources.order import blp as UserBlueprint
+from resources.cart import blp as CartBlueprint
+from resources.order import blp as OrderBlueprint
 
 
 def create_app(db_url=None):
@@ -43,7 +43,7 @@ def create_app(db_url=None):
     def home():
         return redirect("/docs")
 
-    api.register_blueprint(AddressBlueprint)
-    api.register_blueprint(UserBlueprint)
+    api.register_blueprint(OrderBlueprint)
+    api.register_blueprint(CartBlueprint)
 
     return app
