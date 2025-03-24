@@ -1,74 +1,104 @@
 from flask.views import MethodView
 from flask_smorest import abort, Blueprint
+from sqlalchemy.exc import SQLAlchemyError
 from db import db
-from models import OrderModel, OrderItemModel, CartModel
-from resources.schemas import OrderSchema, OrderUpdateSchema, PlainOrderSchema
+from models import OrderModel, CartModel
+from resources.schemas import OrderSchema, OrderUpdateSchema
+from datetime import datetime
 
 blp = Blueprint("Orders", __name__, description="Operations on orders")
 
+def calculate_order_total(cart):
+    return sum(item.product_price * item.quantity for item in cart.items)
 
 @blp.route("/order/<int:order_id>")
 class Order(MethodView):
     @blp.response(200, OrderSchema)
     def get(self, order_id):
-        """Retrieve an order by ID"""
-        return OrderModel.query.get_or_404(order_id)
+        """Retrieve order details with cart snapshot"""
+        order = OrderModel.query.get_or_404(order_id)
+        return order
 
     @blp.arguments(OrderUpdateSchema)
     @blp.response(200, OrderSchema)
     def put(self, order_data, order_id):
-        """Update an existing order"""
-        order = OrderModel.query.get(order_id)
-        if not order:
-            abort(404, message="Order not found")
-
+        """Update order status/shipping details"""
+        order = OrderModel.query.get_or_404(order_id)
+        
         if "status" in order_data:
+            if order.status == 'completed' and order_data["status"] != 'completed':
+                abort(400, message="Completed orders cannot be modified")
             order.status = order_data["status"]
-
+        
+        # Update shipping/billing info if provided
+        for field in ['shipping_address', 'billing_address', 'payment_status']:
+            if field in order_data:
+                setattr(order, field, order_data[field])
+        
+        order.updated_at = datetime.utcnow()
         db.session.commit()
         return order
 
+    @blp.response(204)
     def delete(self, order_id):
-        """Delete an order"""
-        order = OrderModel.query.get(order_id)
-        if not order:
-            abort(404, message="Order not found")
+        """Cancel an order (if allowed)"""
+        order = OrderModel.query.get_or_404(order_id)
+        
+        if order.status == 'completed':
+            abort(400, message="Completed orders cannot be deleted")
+            
         db.session.delete(order)
         db.session.commit()
-        return {"message": "Order deleted successfully"}, 200
-
+        return ""
 
 @blp.route("/order")
 class OrderList(MethodView):
     @blp.response(200, OrderSchema(many=True))
     def get(self):
-        """Retrieve all orders"""
+        """List all orders"""
         return OrderModel.query.all()
 
-    @blp.arguments(PlainOrderSchema)
+    @blp.arguments(OrderSchema(exclude=["status", "payment_status"]))
     @blp.response(201, OrderSchema)
     def post(self, order_data):
-        """Create a new order"""
-        # Ensure the cart exists before creating an order
+        """Create new order from cart"""
         cart = CartModel.query.get(order_data["cart_id"])
+        
+        # Validation checks
         if not cart:
             abort(404, message="Cart not found")
-        
-        # Create the order linked to the existing cart
-        order = OrderModel(**order_data)
-        db.session.add(order)
-        db.session.commit()
+        if cart.user_id != order_data["user_id"]:
+            abort(403, message="Cart does not belong to this user")
+        if not cart.items:
+            abort(400, message="Cannot create order from empty cart")
+        if cart.status != 'active':
+            abort(400, message="Cart is not active for ordering")
 
-        # Optionally, create order items (if required, based on the cart items)
-        for item in cart.items:
-            order_item = OrderItemModel(
-                order_id=order.id,
-                product_id=item.product_id,
-                product_name=item.product_name,
-                product_price=item.product_price,
-                quantity=item.quantity,
+        try:
+            # Create order with cart snapshot
+            order = OrderModel(
+                user_id=order_data["user_id"],
+                cart_id=cart.id,
+                total_price=calculate_order_total(cart),
+                shipping_address=order_data.get("shipping_address"),
+                billing_address=order_data.get("billing_address")
             )
-            db.session.add(order_item)
 
-        db.session.commit()
-        return order, 201
+            # Freeze cart state by updating its status
+            cart.status = "ordered"
+            
+            db.session.add(order)
+            db.session.commit()
+            return order
+            
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            abort(500, message="Error creating order")
+
+@blp.route("/user/<int:user_id>/orders")
+class UserOrders(MethodView):
+    @blp.response(200, OrderSchema(many=True))
+    def get(self, user_id):
+        """Retrieve all orders placed by a user."""
+        orders = OrderModel.query.filter_by(user_id=user_id).all()
+        return orders
