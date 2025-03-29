@@ -4,8 +4,9 @@ from db import db
 from flask_cors import CORS
 from flask import Flask
 from flask_smorest import Api
-from resources.cart import blp as CartBlueprint
-from resources.order import blp as OrderBlueprint
+from resources.carts import blp as CartBlueprint
+from resources.orders import blp as OrderBlueprint
+from resources.products import blp as ProductBlueprint
 
 
 def create_app(db_url=None):
@@ -23,7 +24,7 @@ def create_app(db_url=None):
     )
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url or os.getenv(
         "DATABASE_URL",
-        "postgresql://admin:admin@postgres:5432/shoppingdb",
+        "sqlite:///shopping.db", #"postgresql://admin:admin@postgres:5432/shoppingdb",
     )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.init_app(app)
@@ -43,7 +44,13 @@ def create_app(db_url=None):
     def home():
         return redirect("/docs")
 
-    api.register_blueprint(OrderBlueprint)
+    #api.register_blueprint(OrderBlueprint)
     api.register_blueprint(CartBlueprint)
+    #api.register_blueprint(ProductBlueprint)
 
     return app
+
+
+if __name__ == "__main__":
+    app = create_app()
+    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=True)

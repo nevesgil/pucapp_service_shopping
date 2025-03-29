@@ -11,6 +11,9 @@ services:
       - postgres
     environment:
       - DATABASE_URL=postgresql://admin:admin@postgres:5432/pucappdb
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - FLASK_APP=app.py
     networks:
       - pucapp-network
   postgres:

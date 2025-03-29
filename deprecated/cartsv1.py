@@ -32,24 +32,6 @@ def fetch_item_from_fakestore(product_id):
     except requests.RequestException as e:
         abort(502, message=f"Failed to fetch product {product_id} from Fake Store API")
 
-def fetch_all_products():
-    """Fetch all products from Fake Store API."""
-    try:
-        response = requests.get("https://fakestoreapi.com/products")
-        response.raise_for_status()
-        return response.json()
-    except requests.RequestException:
-        return None
-
-@blp.route("/products")
-class ProductList(MethodView):
-    def get(self):
-        """Fetch all available products from the Fake Store API."""
-        products = fetch_all_products()
-        if products:
-            return products
-        else:
-            abort(500, message="Failed to fetch products from Fake Store API")
 
 @blp.route("/cart/<int:cart_id>")
 class CartDetail(MethodView):
@@ -197,3 +179,7 @@ class UserCarts(MethodView):
         carts = CartModel.query.filter_by(user_id=user_id).all()
         return carts
     
+
+
+
+### https://medium.com/design-microservices-architecture-with-patterns/microservices-distributed-caching-76828817e41b
