@@ -3,7 +3,7 @@ from flask_smorest import abort, Blueprint
 from sqlalchemy.exc import SQLAlchemyError
 from db import db
 from models import OrderModel, CartModel
-from models.ss_schemas import OrderSchema, OrderUpdateSchema
+from resources.schemas import OrderSchema, OrderUpdateSchema
 from datetime import datetime
 
 blp = Blueprint("Orders", __name__, description="Operations on orders")

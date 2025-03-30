@@ -24,7 +24,7 @@ def create_app(db_url=None):
     )
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url or os.getenv(
         "DATABASE_URL",
-        "sqlite:///shopping.db", #"postgresql://admin:admin@postgres:5432/shoppingdb",
+        "postgresql://admin:admin@postgres:5432/pucappdb"
     )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.init_app(app)
@@ -44,9 +44,9 @@ def create_app(db_url=None):
     def home():
         return redirect("/docs")
 
-    #api.register_blueprint(OrderBlueprint)
+    api.register_blueprint(OrderBlueprint)
     api.register_blueprint(CartBlueprint)
-    #api.register_blueprint(ProductBlueprint)
+    api.register_blueprint(ProductBlueprint)
 
     return app
 

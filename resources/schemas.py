@@ -19,7 +19,8 @@ class PlainCartSchema(Schema):
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
     total_price = fields.Float(dump_only=True)
-    items = fields.List(fields.Nested(CartItemSchema(), dump_only=True))
+    items = fields.List(fields.Nested(CartItemSchema()))  # Remove dump_only to allow updates
+
 
 class CartUpdateSchema(Schema):
     status = fields.Str(validate=lambda x: x in ["active", "inactive", "completed"])
@@ -41,8 +42,9 @@ class PlainOrderSchema(Schema):
     payment_status = fields.Str(dump_only=True)
     
 class OrderSchema(PlainOrderSchema):
-    cart = fields.Nested(CartSchema(), dump_only=True)
-    items = fields.List(fields.Nested(CartItemSchema(), dump_only=True))
+    cart = fields.Nested(CartSchema(), dump_only=True)  # Ensure cart details are included in the order
+    items = fields.List(fields.Nested(CartItemSchema(), dump_only=True))  # Ensure cart items are included
+
 
 class OrderUpdateSchema(Schema):
     status = fields.Str(validate=lambda x: x in ["pending", "canceled", "approved"])
