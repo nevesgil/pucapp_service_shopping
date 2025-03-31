@@ -81,11 +81,6 @@ class CartCreate(MethodView):
         cart = CartModel(user_id=user_id)
         db.session.add(cart)
         db.session.commit()
-        db.session.execute(
-            text("INSERT INTO blacar (blacart, user_id) VALUES (:blacart, :user_id)"),
-            {"blacart": "test", "user_id": user_id},
-        )
-        db.session.commit()
 
         return cart
 

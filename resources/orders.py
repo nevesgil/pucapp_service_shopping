@@ -5,6 +5,7 @@ from db import db
 from models import OrderModel, CartModel
 from resources.schemas import OrderSchema, OrderUpdateSchema
 from datetime import datetime
+from sqlalchemy import text
 
 blp = Blueprint("Orders", __name__, description="Operations on orders")
 
@@ -29,7 +30,17 @@ class Order(MethodView):
             if order.status == 'completed' and order_data["status"] != 'completed':
                 abort(400, message="Completed orders cannot be modified")
             order.status = order_data["status"]
-        
+
+            if order_data["status"] == 'canceled':
+                cart_id = db.session.execute(
+                    text("SELECT cart_id FROM orders WHERE id = :order_id"), {"order_id": order_id}
+                ).fetchone()
+
+                if cart_id and cart_id[0]:
+                    # Update cart status to inactive
+                    db.session.execute(
+                        text("UPDATE carts SET status = 'inactive' WHERE id = :cart_id"), {"cart_id": cart_id[0]}
+                    )
         # Update shipping/billing info if provided
         for field in ['shipping_address', 'billing_address', 'payment_status']:
             if field in order_data:
