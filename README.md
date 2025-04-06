@@ -1,13 +1,16 @@
 # PUCAPP SERVICE SHOPPING
 Gilmar Neves
 
-> ⚠️ **Attention**
+> .  
+> 🧩 **Part of a Multi-Service Project**
 >
-> Before running any service containers, **ensure the infrastructure services (e.g., database, network) are up and running**.
-> Failing to do so may result in connection errors or failed startup for dependent services.
-> 
-> > 🔗 The infrastructure service can be found [**here**](https://github.com/nevesgil/pucapp_infra).
-
+> This service is one piece of a larger microservices-based project. You can find the related repositories below:
+>
+> - [**Infrastructure Service**](https://github.com/nevesgil/pucapp_infra)
+> - [**Users Service**](https://github.com/nevesgil/pucapp_service_users)
+> - [**Shopping Service**](https://github.com/nevesgil/pucapp_service_shopping)
+> - [**Principal Gateway**](https://github.com/nevesgil/pucapp_principal_gateway
+>.
 
 ## Summary
 
@@ -86,6 +89,15 @@ In the database shopping_db, one may find the normalized model:
 ![shopping_model](./doc/img/shopping_model.png)
 
 ### Use
+
+> .  
+> ⚠️ **Attention**
+>
+> Before running any service containers, **ensure the infrastructure services (e.g., database, network) are up and running**.
+> Failing to do so may result in connection errors or failed startup for dependent services.
+> 
+> 🔗 The infrastructure service can be found [**here**](https://github.com/nevesgil/pucapp_infra).  
+> .
 
 In order to use this for running the project, please follow the steps described below:
 
