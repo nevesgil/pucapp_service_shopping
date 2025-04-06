@@ -90,14 +90,14 @@ In the database shopping_db, one may find the normalized model:
 
 ### Use
 
-> .  
+>
 > ⚠️ **Attention**
 >
 > Before running any service containers, **ensure the infrastructure services (e.g., database, network) are up and running**.
 > Failing to do so may result in connection errors or failed startup for dependent services.
 > 
 > 🔗 The infrastructure service can be found [**here**](https://github.com/nevesgil/pucapp_infra).  
-> .
+>
 
 In order to use this for running the project, please follow the steps described below:
 
