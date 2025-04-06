@@ -4,6 +4,7 @@ import requests
 
 blp = Blueprint("Products", __name__, description="Operations on products")
 
+
 def fetch_all_products():
     """Fetch all products from Fake Store API."""
     try:

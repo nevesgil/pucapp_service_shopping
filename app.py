@@ -23,8 +23,7 @@ def create_app(db_url=None):
         "https://cdn.jsdelivr.net/npm/swagger-ui-dist/"
     )
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url or os.getenv(
-        "DATABASE_URL",
-        "postgresql://admin:admin@postgres:5432/shopping_db"
+        "DATABASE_URL", "postgresql://admin:admin@postgres:5432/shopping_db"
     )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.init_app(app)
@@ -49,8 +48,3 @@ def create_app(db_url=None):
     api.register_blueprint(ProductBlueprint)
 
     return app
-
-
-if __name__ == "__main__":
-    app = create_app()
-    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=True)
