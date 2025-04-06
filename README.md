@@ -1,7 +1,7 @@
 # PUCAPP SERVICE SHOPPING
 Gilmar Neves
 
-> .  
+>
 > 🧩 **Part of a Multi-Service Project**
 >
 > This service is one piece of a larger microservices-based project. You can find the related repositories below:
@@ -10,7 +10,7 @@ Gilmar Neves
 > - [**Users Service**](https://github.com/nevesgil/pucapp_service_users)
 > - [**Shopping Service**](https://github.com/nevesgil/pucapp_service_shopping)
 > - [**Principal Gateway**](https://github.com/nevesgil/pucapp_principal_gateway)
->.
+>
 
 ## Summary
 
