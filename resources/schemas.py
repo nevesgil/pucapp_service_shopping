@@ -24,9 +24,7 @@ class PlainCartSchema(Schema):
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
     total_price = fields.Float(dump_only=True)
-    items = fields.List(
-        fields.Nested(CartItemSchema())
-    )  # Remove dump_only to allow updates
+    items = fields.List(fields.Nested(CartItemSchema()))
 
 
 class CartUpdateSchema(Schema):
@@ -54,12 +52,8 @@ class PlainOrderSchema(Schema):
 
 
 class OrderSchema(PlainOrderSchema):
-    cart = fields.Nested(
-        CartSchema(), dump_only=True
-    )  # Ensure cart details are included in the order
-    items = fields.List(
-        fields.Nested(CartItemSchema(), dump_only=True)
-    )  # Ensure cart items are included
+    cart = fields.Nested(CartSchema(), dump_only=True)
+    items = fields.List(fields.Nested(CartItemSchema(), dump_only=True))
 
 
 class OrderUpdateSchema(Schema):

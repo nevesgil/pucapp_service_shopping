@@ -21,7 +21,6 @@ def calculate_cart_total(cart):
     return cart
 
 
-# SQLAlchemy event to update cart total when items change
 @event.listens_for(CartItemModel, "after_insert")
 @event.listens_for(CartItemModel, "after_update")
 @event.listens_for(CartItemModel, "after_delete")
@@ -50,7 +49,7 @@ def fetch_item_from_fakestore(product_id):
             "category": data["category"],
         }
     except requests.Timeout:
-        abort(504, message="Request to Fake Store API timed out")  # Return proper error
+        abort(504, message="Request to Fake Store API timed out")
     except requests.RequestException as e:
         abort(
             502,
@@ -60,7 +59,7 @@ def fetch_item_from_fakestore(product_id):
 
 @blp.route("/cart")
 class CartCreate(MethodView):
-    @blp.arguments(CartSchema(exclude=["items"]))  # Exclude items during cart creation
+    @blp.arguments(CartSchema(exclude=["items"]))
     @blp.response(201, CartSchema)
     def post(self, cart_data):
         """Create a new cart, ensuring the user has only one active cart."""
@@ -70,14 +69,12 @@ class CartCreate(MethodView):
             user = UserModel(id=user_id)
             db.session.add(user)
 
-        # Ensure there is only one active cart per user
         existing_cart = CartModel.query.filter_by(
             user_id=user_id, status="active"
         ).first()
         if existing_cart:
-            return existing_cart  # Prevent multiple active carts
+            return existing_cart
 
-        # Create a new cart for the user
         cart = CartModel(user_id=user_id)
         db.session.add(cart)
         db.session.commit()
@@ -91,7 +88,6 @@ class CartItemAdd(MethodView):
     @blp.response(201, CartItemSchema)
     def post(self, item_data, cart_id):
         """Add item to cart."""
-        # Ensure cart exists
         cart = db.session.execute(
             text("SELECT * FROM carts WHERE id = :cart_id"), {"cart_id": cart_id}
         ).fetchone()
@@ -102,13 +98,11 @@ class CartItemAdd(MethodView):
         product_id = item_data["product_id"]
         quantity = item_data.get("quantity", 1)
 
-        # Fetch product details from Fake Store API
         product_data = fetch_item_from_fakestore(product_id)
 
         if not product_data:
             abort(400, message="Invalid product ID")
 
-        # Check if item already exists in cart
         existing_item = db.session.execute(
             text(
                 "SELECT * FROM cart_items WHERE cart_id = :cart_id AND product_id = :product_id"
@@ -117,7 +111,6 @@ class CartItemAdd(MethodView):
         ).fetchone()
 
         if existing_item:
-            # Update quantity
             new_quantity = existing_item.quantity + quantity
             new_subtotal = new_quantity * product_data["price"]
             db.session.execute(
@@ -131,7 +124,6 @@ class CartItemAdd(MethodView):
                 },
             )
         else:
-            # Insert new item
             db.session.execute(
                 text(
                     """
@@ -149,7 +141,6 @@ class CartItemAdd(MethodView):
                 },
             )
 
-        # Recalculate cart total
         total_price = (
             db.session.execute(
                 text("SELECT SUM(subtotal) FROM cart_items WHERE cart_id = :cart_id"),
@@ -173,7 +164,7 @@ class CartManager(MethodView):
     def get(self, cart_id):
         """Get full cart details."""
         cart = CartModel.query.get_or_404(cart_id)
-        return cart  # Let Marshmallow schema handle serialization
+        return cart
 
     @blp.arguments(CartUpdateSchema(exclude=["items"]))
     @blp.response(200, CartSchema)
@@ -181,25 +172,22 @@ class CartManager(MethodView):
         """Update cart status."""
         cart = CartModel.query.get_or_404(cart_id)
 
-        # Update status if provided
         if "status" in cart_data:
             cart.status = cart_data["status"]
 
-            # If the status is completed, create an order for the cart
             if cart.status == "completed":
                 order = OrderModel(
                     user_id=cart.user_id,
                     cart_id=cart.id,
-                    status="pending",  # Order starts as pending
+                    status="pending",
                     total_price=cart.total_price,
                     shipping_address="",
                     billing_address="",
-                    payment_status="pending",  # You can adjust the default payment status as needed
+                    payment_status="pending",
                 )
                 db.session.add(order)
                 db.session.commit()
 
-        # Recalculate the cart total after status change
         calculate_cart_total(cart)
         db.session.commit()
 
@@ -209,7 +197,6 @@ class CartManager(MethodView):
     def delete(self, cart_id):
         """Delete entire cart and its items using raw SQL queries"""
 
-        # Ensure the cart exists before attempting to delete it
         cart = db.session.execute(
             text("SELECT id FROM carts WHERE id = :cart_id"), {"cart_id": cart_id}
         ).fetchone()
@@ -217,13 +204,11 @@ class CartManager(MethodView):
         if not cart:
             abort(404, message="Cart not found")
 
-        # Delete associated cart items
         db.session.execute(
             text("DELETE FROM cart_items WHERE cart_id = :cart_id"),
             {"cart_id": cart_id},
         )
 
-        # Delete the cart
         db.session.execute(
             text("DELETE FROM carts WHERE id = :cart_id"), {"cart_id": cart_id}
         )
@@ -237,7 +222,6 @@ class CartItemManager(MethodView):
     def delete(self, cart_id, product_id):
         """Remove specific item from cart using raw SQL queries."""
 
-        # Check if the item exists in the cart
         item = db.session.execute(
             text(
                 "SELECT id FROM cart_items WHERE cart_id = :cart_id AND product_id = :product_id"
@@ -248,7 +232,6 @@ class CartItemManager(MethodView):
         if not item:
             abort(404, message="Item not found in cart")
 
-        # Delete the item from the cart
         db.session.execute(
             text(
                 "DELETE FROM cart_items WHERE cart_id = :cart_id AND product_id = :product_id"
@@ -256,7 +239,6 @@ class CartItemManager(MethodView):
             {"cart_id": cart_id, "product_id": product_id},
         )
 
-        # Recalculate total price of the cart
         new_total = db.session.execute(
             text(
                 "SELECT COALESCE(SUM(subtotal), 0) FROM cart_items WHERE cart_id = :cart_id"
@@ -264,7 +246,6 @@ class CartItemManager(MethodView):
             {"cart_id": cart_id},
         ).scalar()
 
-        # Update the cart total price
         db.session.execute(
             text("UPDATE carts SET total_price = :new_total WHERE id = :cart_id"),
             {"new_total": new_total, "cart_id": cart_id},
@@ -273,12 +254,11 @@ class CartItemManager(MethodView):
         db.session.commit()
         return {"message": "Item removed from cart"}, 200
 
-    @blp.arguments(CartItemSchema(partial=True))  # Supports partial updates
+    @blp.arguments(CartItemSchema(partial=True))
     @blp.response(200, CartItemSchema)
     def patch(self, item_data, cart_id, product_id):
         """Update item quantity using raw SQL queries."""
 
-        # Check if the item exists in the cart
         item = db.session.execute(
             text(
                 "SELECT id, product_price FROM cart_items WHERE cart_id = :cart_id AND product_id = :product_id"
@@ -291,12 +271,10 @@ class CartItemManager(MethodView):
 
         item_id, product_price = item
 
-        # Update quantity if provided
         if "quantity" in item_data:
             new_quantity = item_data["quantity"]
             new_subtotal = product_price * new_quantity
 
-            # Update the cart item
             db.session.execute(
                 text(
                     "UPDATE cart_items SET quantity = :quantity, subtotal = :subtotal WHERE id = :item_id"
@@ -308,7 +286,6 @@ class CartItemManager(MethodView):
                 },
             )
 
-        # Recalculate total price of the cart
         new_total = db.session.execute(
             text(
                 "SELECT COALESCE(SUM(subtotal), 0) FROM cart_items WHERE cart_id = :cart_id"
@@ -316,7 +293,6 @@ class CartItemManager(MethodView):
             {"cart_id": cart_id},
         ).scalar()
 
-        # Update the cart total price
         db.session.execute(
             text("UPDATE carts SET total_price = :new_total WHERE id = :cart_id"),
             {"new_total": new_total, "cart_id": cart_id},
@@ -324,7 +300,6 @@ class CartItemManager(MethodView):
 
         db.session.commit()
 
-        # Fetch the updated item to return
         updated_item = db.session.execute(
             text("SELECT * FROM cart_items WHERE id = :item_id"), {"item_id": item_id}
         ).fetchone()

@@ -40,14 +40,12 @@ class Order(MethodView):
                 ).fetchone()
 
                 if cart_id and cart_id[0]:
-                    # Update cart status to inactive
                     db.session.execute(
                         text(
                             "UPDATE carts SET status = 'inactive' WHERE id = :cart_id"
                         ),
                         {"cart_id": cart_id[0]},
                     )
-        # Update shipping/billing info if provided
         for field in ["shipping_address", "billing_address", "payment_status"]:
             if field in order_data:
                 setattr(order, field, order_data[field])
@@ -82,7 +80,6 @@ class OrderList(MethodView):
         """Create new order from cart"""
         cart = CartModel.query.get(order_data["cart_id"])
 
-        # Validation checks
         if not cart:
             abort(404, message="Cart not found")
         if cart.user_id != order_data["user_id"]:
@@ -93,7 +90,6 @@ class OrderList(MethodView):
             abort(400, message="Cart is not active for ordering")
 
         try:
-            # Create order with cart snapshot
             order = OrderModel(
                 user_id=order_data["user_id"],
                 cart_id=cart.id,
@@ -102,7 +98,6 @@ class OrderList(MethodView):
                 billing_address=order_data.get("billing_address"),
             )
 
-            # Freeze cart state by updating its status
             cart.status = "ordered"
 
             db.session.add(order)
