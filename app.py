@@ -10,6 +10,10 @@ from resources.products import blp as ProductBlueprint
 
 
 def create_app(db_url=None):
+    """
+    Create a Flask application instance with the specified database URL.
+    If no URL is provided, it defaults to a PostgreSQL database URL.
+    """
 
     app = Flask(__name__)
 
@@ -41,6 +45,9 @@ def create_app(db_url=None):
     # Redirecting the route for the Swagger docs
     @app.route("/")
     def home():
+        """
+        Redirect to the Swagger documentation page.
+        """
         return redirect("/docs")
 
     api.register_blueprint(OrderBlueprint)

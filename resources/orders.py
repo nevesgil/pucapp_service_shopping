@@ -11,6 +11,10 @@ blp = Blueprint("Orders", __name__, description="Operations on orders")
 
 
 def calculate_order_total(cart):
+    """
+    Calculate the total price of the order based on the cart items.
+    This function assumes that each item in the cart has a product_price and quantity.
+    """
     return sum(item.product_price * item.quantity for item in cart.items)
 
 
