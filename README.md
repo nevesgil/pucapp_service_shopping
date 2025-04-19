@@ -134,7 +134,7 @@ docker run -d \
   --name pucapp_shopping \
   -p 5002:5000 \
   -v "$(pwd)":/app \
-  -e DATABASE_URL=postgresql://admin:admin@postgres:5432/users_db \
+  -e DATABASE_URL=postgresql://admin:admin@postgres:5432/shopping_db \
   --network pucapp_infra_pucapp_network \
   pucapp_shopping
 ```
